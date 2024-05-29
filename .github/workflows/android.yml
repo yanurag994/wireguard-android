@@ -1,0 +1,61 @@
+name: Android CI
+
+
+env:
+  # The name of the main module repository
+  main_project_module: WireGuard_Custom
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository with submodules
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+        # Set Current Date As Env Variable
+    - name: Set current date as env variable
+      run: echo "date_today=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+    # Set Repository Name As Env Variable
+    - name: Set repository name as env variable
+      run: echo "repository_name=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')" >> $GITHUB_ENV
+
+    - uses: actions/checkout@v4
+    - name: set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v2
+      with:
+        api-level: 34
+        build-tools: 35.0.1
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    - name: Build with Gradle
+      run: ./gradlew build
+
+    # Create APK Release
+    - name: Build apk release project (APK) - ${{ env.main_project_module }} module
+      run: ./gradlew assemble
+
+    # Noted For Output [main_project_module]/build/outputs/apk/release/
+    - name: Upload APK Release - ${{ env.repository_name }}
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.date_today }}
+        path: ${{ env.main_project_module }}/build/outputs/apk/release/   
